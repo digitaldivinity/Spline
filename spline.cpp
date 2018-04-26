@@ -7,8 +7,8 @@
 #define BORDER 10
 #define STEP 10
 #define MAXPOINTS 100
-//границы
-//перемещние и добавление удаление точек
+
+using namespace sf;
 
 struct k_point{
 	double x,y;
@@ -52,7 +52,7 @@ class ex{
 			case 2: printf("two\n"); break;
 			case 3: printf("array overflow error\n"); break;
 			case 5: printf("Неполный набор параметров\n"); break;
-			default: printf("undef error\n"); break;
+			default: printf("undef error code %d\n",a); break;
 		}
 	}
 };
@@ -67,6 +67,25 @@ double pow(double x,int y){
 	}
 	return x;
 }
+
+//место - номер в массиве, количество - колво значимых элементов массива
+void ins_point(k_point * p,k_point & chto, int mesto, int & kolvo){
+	if (kolvo==MAXPOINTS) throw ex(40);
+	if (mesto > kolvo-1) throw ex(40); //throw
+	for (int i=kolvo-1;i>=mesto;i--) p[i+1]=p[i];//сдвиг	
+	p[mesto]=chto;
+	kolvo++;
+}
+//количество передается по ссылке, это важно
+void del_point(k_point * p, int mesto, int & kolvo){
+	if (kolvo<1) return ; //thrwo
+	if (mesto>kolvo-1) throw ex(41); //throw
+	for (int i=mesto;i<kolvo-1;i++){//сдвиг
+		p[i]=p[i+1];
+	}
+	kolvo--;
+}
+
 
 double h1(double t){
 	return 2*pow(t,3)-3*pow(t,2)+1;
@@ -88,7 +107,6 @@ k_point polinom(k_point one,k_point two,k_point done, k_point dtwo, double t){
 	return one*h1(t)+two*h2(t)+done*h3(t)+dtwo*h4(t);
 }
 
-using namespace sf;
 
 double abs(double x){
 	if (x<0) return -x;
@@ -172,12 +190,14 @@ void dnd(k_point * p,k_point *m,int amount, RenderWindow & window,Color curve,Co
 	window.display();
 }
 
-void get_cursor(k_point * p,k_point * m,int * amount){
+int main(int argc,char ** argv){
+try{//можно добавить параметры
+	k_point p[100];
+	k_point m[100];
 	int i=0;
 	int turn=0;
 	int mode=0;
-	k_point ptb;
-	RenderWindow window(VideoMode(800,800),"click points");
+	RenderWindow window(VideoMode(X,Y),"Spline");
 	window.clear(Color::White);
 	window.display();
 	while (window.isOpen()){
@@ -194,28 +214,22 @@ void get_cursor(k_point * p,k_point * m,int * amount){
 						Event event0;//button realissed
 						while (window.pollEvent(event0)){
 							if (event0.type ==Event::Closed) {window.close(); throw ex(5);}
-							else 
-							if (event0.type ==sf::Event::MouseMoved){//мышка переместилась с зажатой кнопкой
-								m[i].x=event0.mouseMove.x-p[i].x;
-								m[i].y=event0.mouseMove.y-p[i].y;
+							else if (event0.type ==sf::Event::MouseMoved){//мышка переместилась с зажатой кнопкой
+								m[i].x=check_border(event0.mouseMove.x,X,BORDER)-p[i].x;
+								m[i].y=check_border(event0.mouseMove.y,Y,BORDER)-p[i].y;
 								window.clear(Color::White);
-								draw_points(&p[0],i+1,window,Color::Red);
+								draw_points(p,i+1,window,Color::Red);
 								if (i!=0) draw_curve(&p[i-1],&m[i-1],2,window,Color::Red);
 								draw_line(p[i],m[i]+p[i],window,Color::Green);
-								draw_curve(&p[0],&m[0],i,window,Color::Black);
+								draw_curve(p,m,i,window,Color::Black);
 								window.display();
 							} 
-							else 
-							if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){//кнопка отжата
-								m[i].x=event0.mouseButton.x-p[i].x;
-								m[i].y=event0.mouseButton.y-p[i].y;
-								window.clear(Color::White);
-								draw_curve(&p[0],&m[0],i+1,window,Color::Black);
-								draw_line(p[i],p[i]+m[i],window,Color::Green);
-								window.display();
+							else if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){//кнопка отжата
 								i++;
+								dnd(p,m,i,window,Color::Black);
 								turn=1;
 							}
+
 						}
 					}
 				}
@@ -226,40 +240,7 @@ void get_cursor(k_point * p,k_point * m,int * amount){
 				buf.x=event.mouseButton.x;
 				buf.y=event.mouseButton.y;
 				num=check_points(p,i,buf);
-				if (-1!=(num=check_points(p,i,buf))){
-					//попали в точку кривой
-					turn = 0;
-					while (!turn){
-						Event event0;
-						while (window.pollEvent(event0)){
-							if (event0.type ==sf::Event::MouseMoved){//мышка переместилась с зажатой кнопкой
-								p[num].x=check_border(event0.mouseMove.x,X,BORDER);
-								p[num].y=check_border(event0.mouseMove.y,Y,BORDER);
-								dnd(p,m,i,window,Color::Black,Color::Green);
-							} 
-							else 
-							if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){//кнопка отжата
-								/*
-								p[num].x=check_border(event0.mouseButton.x,X,BORDER);
-								p[num].y=check_border(event0.mouseButton.y,Y,BORDER);
-								dnd(p,m,i,window,Color::Black,Color::Green);*/
-								turn=1;
-							}/*
-							else
-							if (event0.type == Event::KeyPressed && event0.key.code == Keyboard::A){
-								ins_point(p,p[num],num,i);
-								num++;
-							}
-							else
-							if (event0.type == Event:: KeyPressed && event0.key.code == Keyboard::D){
-								turn=1;
-								del_point(p,num,i);
-								dnd(p,i,mode,window,Color::Black);
-							}*/
-						}
-					}
-				}
-				else if (-1!=(num=check_points(p,m,i,buf))){
+				if (-1!=(num=check_points(p,m,i,buf))){
 					//попали в точку производной
 					turn = 0;
 					while (!turn){
@@ -269,26 +250,50 @@ void get_cursor(k_point * p,k_point * m,int * amount){
 								m[num].x=check_border(event0.mouseMove.x,X,BORDER)-p[num].x;
 								m[num].y=check_border(event0.mouseMove.y,Y,BORDER)-p[num].y;
 								dnd(p,m,i,window,Color::Black,Color::Green);
-							} 
-							else 
-							if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){//кнопка отжата
-								/*m[num].x=p[num].x-check_border(event0.mouseButton.x,X,BORDER);
-								m[num].y=p[num].y-check_border(event0.mouseButton.y,Y,BORDER);
-								dnd(p,m,i,window,Color::Black,Color::Green);*/
+							} //кнопка отжата
+							else if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){
 								turn=1;
-							}/*
-							else
-							if (event0.type == Event::KeyPressed && event0.key.code == Keyboard::A){
+							}//нажата D
+							else if (event0.type == Event:: KeyPressed && event0.key.code == Keyboard::D){
+								m[num].x=0;
+								m[num].y=0;
+								dnd(p,m,i,window,Color::Black,Color::Green);
+								turn=1;
+							}
+						}
+						
+					}
+				}
+				else if (-1!=(num=check_points(p,i,buf))){
+					//попали в точку кривой
+					turn = 0;
+					while (!turn){
+						Event event0;
+						while (window.pollEvent(event0)){
+							if (event0.type ==sf::Event::MouseMoved){//мышка переместилась с зажатой кнопкой
+								p[num].x=check_border(event0.mouseMove.x,X,BORDER);
+								p[num].y=check_border(event0.mouseMove.y,Y,BORDER);
+								dnd(p,m,i,window,Color::Black,Color::Green);
+							}
+							else if (event0.type == sf::Event:: MouseButtonReleased && event0.mouseButton.button == sf::Mouse::Left){//кнопка отжата
+								turn=1;
+							}
+							else if (event0.type == Event::KeyPressed && event0.key.code == Keyboard::A){
+								k_point buf;
 								ins_point(p,p[num],num,i);
+								i--;
+								ins_point(m,buf,num,i);
 								num++;
 							}
-							else
-							if (event0.type == Event:: KeyPressed && event0.key.code == Keyboard::D){
-								turn=1;
+							else if (event0.type == Event:: KeyPressed && event0.key.code == Keyboard::D){
 								del_point(p,num,i);
-								dnd(p,i,mode,window,Color::Black);
-							}*/
+								i++;
+								del_point(m,num,i);
+								dnd(p,m,i,window,Color::Black,Color::Green);
+								turn=1;
+							}
 						}
+						
 					}
 					
 				}
@@ -299,22 +304,8 @@ void get_cursor(k_point * p,k_point * m,int * amount){
 			}
 		}
 	}
-	
-	*amount=i;
 }
-//hello there general kenobi
-
-
-int main(){
-	try{	
-			int amount=0;
-			k_point p[100];
-			k_point m[100];
-			get_cursor(&p[0],&m[0],&amount);
-			for (int i=0;i<amount;i++) printf("%lf %lf %lf %lf\n",p[i].x,p[i].y,m[i].x,m[i].y);
-		}
 	catch (int i){printf("%d\n",i);}
 	catch (ex a){a.out();}
-	
 	return 0;
 }
