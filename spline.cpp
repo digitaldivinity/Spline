@@ -302,7 +302,7 @@ void get_cursor(k_point * p,k_point * m,int * amount){
 	
 	*amount=i;
 }
-
+//hello there general kenobi
 
 
 int main(){
